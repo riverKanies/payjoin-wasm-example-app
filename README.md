@@ -1,10 +1,10 @@
 # WASM App Example
 
 ## Server app to test a WASM package
-
-`npm install`
-`npm start`
-
+```
+npm install
+npm start
+```
 open browser to http://localhost:8080/
 open browser console to see scan rusults
 
@@ -12,9 +12,12 @@ open browser console to see scan rusults
 ## Build WASM package
 
 By default the example will pull the bitcoindevkit package from npm.
-However, if you want to pull from the local package (say for development) modify the dependency in the package.json `"bitcoindevkit": "file:../bdk-wasm/pkg"`,file, and build:
+However, if you want to pull from the local package (say for development) modify the dependency in the package.json and build:
+
+`"bitcoindevkit": "file:../bdk-wasm/pkg"`
 
 From bdk-wasm folder (the wasm-package):
+
 `wasm-pack build --features esplora`
 
 ### Mac Users
