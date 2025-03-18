@@ -1,5 +1,5 @@
 {
-  "name": "example-bdk-wasm",
+  "name": "example-payjoin-wasm",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -17,6 +17,7 @@
     "webpack-dev-server": "^5.1.0"
   },
   "dependencies": {
-    "bitcoindevkit": "^0.1.3"
+    "bitcoindevkit": "^0.1.3",
+    "payjoindevkit": "file:../../payjoin/ffi/payjoin-ffi/pkg"
   }
 }
