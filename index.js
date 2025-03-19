@@ -1,8 +1,14 @@
+// Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
+
 import {  Wallet, EsploraClient, ChangeSet } from 'bitcoindevkit';
-import { Uri } from 'payjoindevkit';
+import { Uri, Receiver } from 'payjoindevkit';
 
 async function testPj() {
+
+    const ohttpRelay = "https://pj.bobspacebkk.com";
+    const payjoinDirectory = "https://payjo.in";
     const ohttpKeys = "OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ" // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
+
 
     const pjUriString = "bitcoin:tb1p6ah70934hd3ppw6f5j9der7vdgz2zz92nxcspyuxqcntqpgjny2se7mals?amount=0.00008&pjos=0&pj=HTTPS://PAYJO.IN/Q40QVRA849287%23RK1Q20SPY3G2Y0H6CKZX25ERJHDJ4HLETX3SC5UMZPKFJK0L73D2AY6G+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1YL32GEC"
 
@@ -11,6 +17,23 @@ async function testPj() {
 
     const pjUri = bip21Uri.check_pj_supported();
     console.log(pjUri.pj_endpoint);
+
+    // testing rust error handling: works as expected
+        //not sure why Receiver errors don't work right
+    // const brokenUri = Uri.parse("fake")
+    // console.log(brokenUri.address());
+
+    console.log('hi')
+    const receiver = Receiver.new(
+        bip21Uri.address(),
+        "testnet",
+        payjoinDirectory,
+        ohttpKeys,
+        ohttpRelay,
+        BigInt(3600)
+    );
+    console.log(receiver);
+    console.log(receiver.to_json());
 }
 
 testPj();
