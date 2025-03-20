@@ -1,7 +1,10 @@
 // Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
 
-import {  Wallet, EsploraClient, ChangeSet } from 'bitcoindevkit';
+import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount } from 'bitcoindevkit';
 import { Uri, Receiver } from 'payjoindevkit';
+
+
+const network = "signet";
 
 async function testPj() {
 
@@ -25,10 +28,13 @@ async function testPj() {
 
     // for full usage example to work off, see rust-payjoin/payjoin/tests/integration.rs#v2_to_v2
 
-    console.log('hi')
+
+    // init sender wallet
+    const {senderWallet, receiverWallet} = await initSenderAndReceiverWallets();
+
     const receiver = Receiver.new(
-        bip21Uri.address(),
-        "testnet",
+        receiverWallet.reveal_next_address().address,
+        network,
         payjoinDirectory,
         ohttpKeys,
         ohttpRelay,
@@ -39,16 +45,23 @@ async function testPj() {
     // got the pj_uri for the sender to use:
     console.log(receiver.pj_uri())
 
-    // init sender wallet
-    await initSenderAndReceiverWallets();
     // create psbt for pj_uri
+    const psbt = senderWallet.build_tx(
+        new FeeRate(BigInt(4)),
+        [new Recipient(Address.new(receiver.pj_uri().address, network),
+            Amount.from_sat(BigInt(8000)))]
+        );
+    // tx_builder.fee_rate(FeeRate::from_sat_per_vb(4).unwrap());
+    // tx_builder.add_recipient(faucet_address.script_pubkey(), send_amount);
 
+    // let mut psbt = tx_builder.finish()?;
+    // let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
+    // assert!(finalized);
 }
 
 testPj();
 
 async function initSenderAndReceiverWallets() {
-    const network = "signet";
     // generated descriptors using book of bdk descriptor example
     const senderDescriptorExternal = "tr(tprv8ZgxMBicQKsPeAndhG7FXuuk57oVpo4Y7xtUitrJyBRFnBHCCpLQofZZ7EZWcwB3zo8BLsJe8Qo5HeShP2zFoMx1zAA8PGnNGbfPozA4SvX/86'/1'/0'/0/*)#kkng6m9y"
     const senderDescriptorInternal = "tr(tprv8ZgxMBicQKsPeAndhG7FXuuk57oVpo4Y7xtUitrJyBRFnBHCCpLQofZZ7EZWcwB3zo8BLsJe8Qo5HeShP2zFoMx1zAA8PGnNGbfPozA4SvX/86'/1'/0'/1/*)#8zkf8w4u"
@@ -60,14 +73,24 @@ async function initSenderAndReceiverWallets() {
     const receiverWallet = Wallet.create(network, receiverDescriptorExternal, receiverDescriptorInternal);
 
     const client = new EsploraClient("https://mutinynet.com/api");
+    // get sats from faucet: https://faucet.mutinynet.com/
+
+    console.log("Receiver syncing...");
+    let receiver_scan_request = receiverWallet.start_full_scan();
+    let receiver_update = await client.full_scan(receiver_scan_request, 5, 1);
+    receiverWallet.apply_update(receiver_update);
+    console.log("Balance:", receiverWallet.balance().confirmed.to_sat());
+    // console.log("New address:", receiverWallet.reveal_next_address().address);
 
     console.log("Sender syncing...");
-    let full_scan_request = senderWallet.start_full_scan();
-    let update = await client.full_scan(full_scan_request, 5, 1);
-    senderWallet.apply_update(update);
+    let sender_scan_request = senderWallet.start_full_scan();
+    let sender_update = await client.full_scan(sender_scan_request, 5, 1);
+    senderWallet.apply_update(sender_update);
     console.log("Balance:", senderWallet.balance().confirmed.to_sat());
     console.log("New address:", senderWallet.reveal_next_address().address);
 
+
+    return {senderWallet, receiverWallet};
 }
 
 
