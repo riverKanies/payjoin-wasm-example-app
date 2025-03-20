@@ -23,6 +23,8 @@ async function testPj() {
     // const brokenUri = Uri.parse("fake")
     // console.log(brokenUri.address());
 
+    // for full usage example to work off, see rust-payjoin/payjoin/tests/integration.rs#v2_to_v2
+
     console.log('hi')
     const receiver = Receiver.new(
         bip21Uri.address(),
@@ -34,9 +36,39 @@ async function testPj() {
     );
     console.log(receiver);
     console.log(receiver.to_json());
+    // got the pj_uri for the sender to use:
+    console.log(receiver.pj_uri())
+
+    // init sender wallet
+    await initSenderAndReceiverWallets();
+    // create psbt for pj_uri
+
 }
 
 testPj();
+
+async function initSenderAndReceiverWallets() {
+    const network = "signet";
+    // generated descriptors using book of bdk descriptor example
+    const senderDescriptorExternal = "tr(tprv8ZgxMBicQKsPeAndhG7FXuuk57oVpo4Y7xtUitrJyBRFnBHCCpLQofZZ7EZWcwB3zo8BLsJe8Qo5HeShP2zFoMx1zAA8PGnNGbfPozA4SvX/86'/1'/0'/0/*)#kkng6m9y"
+    const senderDescriptorInternal = "tr(tprv8ZgxMBicQKsPeAndhG7FXuuk57oVpo4Y7xtUitrJyBRFnBHCCpLQofZZ7EZWcwB3zo8BLsJe8Qo5HeShP2zFoMx1zAA8PGnNGbfPozA4SvX/86'/1'/0'/1/*)#8zkf8w4u"
+
+    const receiverDescriptorExternal = "tr(tprv8ZgxMBicQKsPdXaSHpSS8nXLfpPunAfEEs7K86ESCroA95iZbaxYyxgqNYurfnA85rKf7fXpqTcgtWC3w8cssERRxZtMafDmrYgRfp12PZw/86'/1'/0'/0/*)#vjm92l0u"
+    const receiverDescriptorInternal = "tr(tprv8ZgxMBicQKsPdXaSHpSS8nXLfpPunAfEEs7K86ESCroA95iZbaxYyxgqNYurfnA85rKf7fXpqTcgtWC3w8cssERRxZtMafDmrYgRfp12PZw/86'/1'/0'/1/*)#ax7yh2ly"
+
+    const senderWallet = Wallet.create(network, senderDescriptorExternal, senderDescriptorInternal);
+    const receiverWallet = Wallet.create(network, receiverDescriptorExternal, receiverDescriptorInternal);
+
+    const client = new EsploraClient("https://mutinynet.com/api");
+
+    console.log("Sender syncing...");
+    let full_scan_request = senderWallet.start_full_scan();
+    let update = await client.full_scan(full_scan_request, 5, 1);
+    senderWallet.apply_update(update);
+    console.log("Balance:", senderWallet.balance().confirmed.to_sat());
+    console.log("New address:", senderWallet.reveal_next_address().address);
+
+}
 
 
 // simple string storage example
@@ -72,7 +104,7 @@ async function run() {
 
         console.log("Performing Full Scan...");
         let full_scan_request = wallet.start_full_scan();
-        let update = await client.full_scan(full_scan_request, 1);
+        let update = await client.full_scan(full_scan_request, 5, 1);
         wallet.apply_update(update);
 
         const stagedDataString = wallet.take_staged().to_json();
