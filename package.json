@@ -17,7 +17,7 @@
     "webpack-dev-server": "^5.1.0"
   },
   "dependencies": {
-    "bitcoindevkit": "^0.1.5",
+    "bitcoindevkit": "file:../../wasm/bdk-wasm/pkg",
     "payjoindevkit": "file:../../payjoin/ffi/payjoin-ffi/pkg"
   }
 }

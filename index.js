@@ -1,30 +1,36 @@
 // Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
 
-import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount } from 'bitcoindevkit';
-import { Uri, Receiver } from 'payjoindevkit';
+import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount, Psbt } from 'bitcoindevkit';
+import { Uri, Receiver, SenderBuilder, Sender, Request } from 'payjoindevkit';
 
 
 const network = "signet";
 
-async function testPj() {
+const ohttpRelay = "https://pj.bobspacebkk.com";
+const payjoinDirectory = "https://payjo.in";
+const ohttpKeys = "OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ" // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
 
-    const ohttpRelay = "https://pj.bobspacebkk.com";
-    const payjoinDirectory = "https://payjo.in";
-    const ohttpKeys = "OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ" // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
-
-
-    const pjUriString = "bitcoin:tb1p6ah70934hd3ppw6f5j9der7vdgz2zz92nxcspyuxqcntqpgjny2se7mals?amount=0.00008&pjos=0&pj=HTTPS://PAYJO.IN/Q40QVRA849287%23RK1Q20SPY3G2Y0H6CKZX25ERJHDJ4HLETX3SC5UMZPKFJK0L73D2AY6G+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1YL32GEC"
-
+async function senderStep1() {
+    const pjUriString = "bitcoin:tb1py8htlf7t93eckwg57ae6w7hkwgd25demjkgsd3xd5srrahg7d6nq9qxctx?pjos=0&pj=HTTPS://PAYJO.IN/4JR6NE33YMDKS%23RK1QD26PW3GS6Z8JSJNFRHQZJHRH9J7WLCFUR7CM5U44X62ZM9QYF7HQ+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1T0FA6EC"
     const bip21Uri = Uri.parse(pjUriString);
     console.log(bip21Uri.address());
-
     const pjUri = bip21Uri.check_pj_supported();
     console.log(pjUri.pj_endpoint);
 
-    // testing rust error handling: works as expected
-        //not sure why Receiver errors don't work right
-    // const brokenUri = Uri.parse("fake")
-    // console.log(brokenUri.address());
+    const psbtString = "cHNidP8BAIkCAAAAAUwc8P8T60C5VVJVORMJReigNB/rG+z8CertBhQuu71HAAAAAAD9////AmcFAAAAAAAAIlEgahGjM6XWp4SNxf/zwBRWIivDG2laolxMX2RwybzSpbxAHwAAAAAAACJRICHuv6fLLHOLORT3c6d69nIaqjc7lZEGxM2kBj7dHm6mQdQdAAABASsQJwAAAAAAACJRII8yGbPZhmj0XAC5xC3Vl/6oLoDL6PdENOr2iDPCRYBhIRZwialnzWYV9atLgOxXotS20us7zx/sT9gitIZhCBy9DRkAJeXTl1YAAIABAACAAAAAgAAAAAAAAAAAARcgcImpZ81mFfWrS4DsV6LUttLrO88f7E/YIrSGYQgcvQ0AAQUgGcPMB/naoZDvDtlzfhjNJFOV0t7uwEt61s7+Iq940VghBxnDzAf52qGQ7w7Zc34YzSRTldLe7sBLetbO/iKveNFYGQAl5dOXVgAAgAEAAIAAAACAAQAAAAAAAAAAAA=="
+    const psbt = Psbt.from_string(psbtString);
+    console.log(psbt.to_json());
+
+    const senderBuilder = SenderBuilder.from_psbt_and_uri(psbtString, pjUri);
+    console.log(senderBuilder);
+    const sender = senderBuilder.build_recommended(BigInt(4));
+    console.log(sender.extract_v2(ohttpRelay));
+}
+
+senderStep1();
+
+async function testPj() {
+
 
     // for full usage example to work off, see rust-payjoin/payjoin/tests/integration.rs#v2_to_v2
 
@@ -43,22 +49,24 @@ async function testPj() {
     console.log(receiver);
     console.log(receiver.to_json());
     // got the pj_uri for the sender to use:
-    console.log(receiver.pj_uri())
+    console.log(receiver.pj_uri().as_string)
 
     // create psbt for pj_uri
-    const psbt = senderWallet.build_tx(
-        new FeeRate(BigInt(4)),
-        [new Recipient(Address.from_string(receiver.pj_uri().address.toString(), network),
-            Amount.from_sat(BigInt(8000)))]
-        );
-        // looks like I'm using an old version of bdk-wasm? this build_tx returns a psbt, other returns a tx_builder...
-
-    // let mut psbt = tx_builder.finish()?;
-    // let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
-    // assert!(finalized);
+    const psbt = senderWallet.build_tx()
+        .fee_rate(new FeeRate(BigInt(4)))
+        .add_recipient(new Recipient(Address.from_string(receiver.pj_uri().address.toString(), network),
+            Amount.from_sat(BigInt(8000))))
+        .finish();
+    console.log(psbt.fee_amount().to_sat());
+    const psbtString = psbt.toString();
+    console.log(psbtString);
+    const psbt2 = Psbt.from_string(psbtString);
+    console.log(psbt2.fee_amount().to_sat());
+    console.log(psbt2.to_json());
 }
 
-testPj();
+// testPj();
+
 
 async function initSenderAndReceiverWallets() {
     // generated descriptors using book of bdk descriptor example
