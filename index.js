@@ -11,20 +11,33 @@ const payjoinDirectory = "https://payjo.in";
 const ohttpKeys = "OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ" // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
 
 async function senderStep1() {
-    const pjUriString = "bitcoin:tb1py8htlf7t93eckwg57ae6w7hkwgd25demjkgsd3xd5srrahg7d6nq9qxctx?pjos=0&pj=HTTPS://PAYJO.IN/4JR6NE33YMDKS%23RK1QD26PW3GS6Z8JSJNFRHQZJHRH9J7WLCFUR7CM5U44X62ZM9QYF7HQ+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1T0FA6EC"
+    const pjUriString = "bitcoin:tb1py8htlf7t93eckwg57ae6w7hkwgd25demjkgsd3xd5srrahg7d6nq9qxctx?pjos=0&pj=HTTPS://PAYJO.IN/AFP46Y28LW3P5%23RK1QG47RCLGFX3HJLPJ88ZT59QSM08V3GU3ZQ2CXX0X90J6PF2MZRGHC+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1WSND7EC"
     const bip21Uri = Uri.parse(pjUriString);
     console.log(bip21Uri.address());
     const pjUri = bip21Uri.check_pj_supported();
-    console.log(pjUri.pj_endpoint);
+    console.log(pjUri.as_string);
 
-    const psbtString = "cHNidP8BAIkCAAAAAUwc8P8T60C5VVJVORMJReigNB/rG+z8CertBhQuu71HAAAAAAD9////AmcFAAAAAAAAIlEgahGjM6XWp4SNxf/zwBRWIivDG2laolxMX2RwybzSpbxAHwAAAAAAACJRICHuv6fLLHOLORT3c6d69nIaqjc7lZEGxM2kBj7dHm6mQdQdAAABASsQJwAAAAAAACJRII8yGbPZhmj0XAC5xC3Vl/6oLoDL6PdENOr2iDPCRYBhIRZwialnzWYV9atLgOxXotS20us7zx/sT9gitIZhCBy9DRkAJeXTl1YAAIABAACAAAAAgAAAAAAAAAAAARcgcImpZ81mFfWrS4DsV6LUttLrO88f7E/YIrSGYQgcvQ0AAQUgGcPMB/naoZDvDtlzfhjNJFOV0t7uwEt61s7+Iq940VghBxnDzAf52qGQ7w7Zc34YzSRTldLe7sBLetbO/iKveNFYGQAl5dOXVgAAgAEAAIAAAACAAQAAAAAAAAAAAA=="
+    const psbtString = "cHNidP8BAIkCAAAAAUwc8P8T60C5VVJVORMJReigNB/rG+z8CertBhQuu71HAAAAAAD9////AmcFAAAAAAAAIlEgahGjM6XWp4SNxf/zwBRWIivDG2laolxMX2RwybzSpbxAHwAAAAAAACJRICHuv6fLLHOLORT3c6d69nIaqjc7lZEGxM2kBj7dHm6mydQdAAABASsQJwAAAAAAACJRII8yGbPZhmj0XAC5xC3Vl/6oLoDL6PdENOr2iDPCRYBhIRZwialnzWYV9atLgOxXotS20us7zx/sT9gitIZhCBy9DRkAJeXTl1YAAIABAACAAAAAgAAAAAAAAAAAARcgcImpZ81mFfWrS4DsV6LUttLrO88f7E/YIrSGYQgcvQ0AAQUgGcPMB/naoZDvDtlzfhjNJFOV0t7uwEt61s7+Iq940VghBxnDzAf52qGQ7w7Zc34YzSRTldLe7sBLetbO/iKveNFYGQAl5dOXVgAAgAEAAIAAAACAAQAAAAAAAAAAAA=="
     const psbt = Psbt.from_string(psbtString);
     console.log(psbt.to_json());
 
     const senderBuilder = SenderBuilder.from_psbt_and_uri(psbtString, pjUri);
     console.log(senderBuilder);
     const sender = senderBuilder.build_recommended(BigInt(4));
-    console.log(sender.extract_v2(ohttpRelay));
+    const request = sender.extract_v2(ohttpRelay);
+    console.log(request);
+    console.log(request.url);
+    console.log(request.content_type);
+    console.log(request.body);
+    const response = await fetch(request.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': request.content_type
+        },
+        body: request.body
+    });
+    const result = await response.text();
+    console.log('session started',result);
 }
 
 senderStep1();
@@ -43,8 +56,7 @@ async function testPj() {
         network,
         payjoinDirectory,
         ohttpKeys,
-        ohttpRelay,
-        BigInt(3600)
+        ohttpRelay
     );
     console.log(receiver);
     console.log(receiver.to_json());
