@@ -33,7 +33,7 @@ async function testPj() {
     const {senderWallet, receiverWallet} = await initSenderAndReceiverWallets();
 
     const receiver = Receiver.new(
-        receiverWallet.reveal_next_address().address,
+        receiverWallet.reveal_next_address().address.toString(),
         network,
         payjoinDirectory,
         ohttpKeys,
@@ -48,11 +48,10 @@ async function testPj() {
     // create psbt for pj_uri
     const psbt = senderWallet.build_tx(
         new FeeRate(BigInt(4)),
-        [new Recipient(Address.new(receiver.pj_uri().address, network),
+        [new Recipient(Address.from_string(receiver.pj_uri().address.toString(), network),
             Amount.from_sat(BigInt(8000)))]
         );
-    // tx_builder.fee_rate(FeeRate::from_sat_per_vb(4).unwrap());
-    // tx_builder.add_recipient(faucet_address.script_pubkey(), send_amount);
+        // looks like I'm using an old version of bdk-wasm? this build_tx returns a psbt, other returns a tx_builder...
 
     // let mut psbt = tx_builder.finish()?;
     // let finalized = wallet.sign(&mut psbt, SignOptions::default())?;
@@ -79,15 +78,15 @@ async function initSenderAndReceiverWallets() {
     let receiver_scan_request = receiverWallet.start_full_scan();
     let receiver_update = await client.full_scan(receiver_scan_request, 5, 1);
     receiverWallet.apply_update(receiver_update);
-    console.log("Balance:", receiverWallet.balance().confirmed.to_sat());
+    console.log("Balance:", receiverWallet.balance.confirmed.to_sat());
     // console.log("New address:", receiverWallet.reveal_next_address().address);
 
     console.log("Sender syncing...");
     let sender_scan_request = senderWallet.start_full_scan();
     let sender_update = await client.full_scan(sender_scan_request, 5, 1);
     senderWallet.apply_update(sender_update);
-    console.log("Balance:", senderWallet.balance().confirmed.to_sat());
-    console.log("New address:", senderWallet.reveal_next_address().address);
+    console.log("Balance:", senderWallet.balance.confirmed.to_sat());
+    console.log("New address:", senderWallet.reveal_next_address().address.toString());
 
 
     return {senderWallet, receiverWallet};
