@@ -6,24 +6,40 @@ import { Uri, Receiver, SenderBuilder, Sender, Request } from 'payjoindevkit';
 
 const network = "signet";
 
+// Some relays below. If you get a timeout error, try a different relay.
+// const ohttpRelay = "https://pj.benalleng.com";
+// const ohttpRelay = "https://ohttp.cakewallet.com";// down
 const ohttpRelay = "https://pj.bobspacebkk.com";
+
+
+// Note: ohttpkeys are the same for all three relays, guess they're specific to the endpoint only
+const ohttpKeys = "OH1QYPJ8S50XG3XK8URWDQ5VKTD6SLSGGH0S6UQ63R93G9VKANS3EX4CZC"
+// if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
+
 const payjoinDirectory = "https://payjo.in";
-const ohttpKeys = "OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ" // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
+
+
+// RUN
+// createAndSavePjUriAndPsbt();
+senderStep1();
+
 
 async function senderStep1() {
-    const pjUriString = "bitcoin:tb1py8htlf7t93eckwg57ae6w7hkwgd25demjkgsd3xd5srrahg7d6nq9qxctx?pjos=0&pj=HTTPS://PAYJO.IN/AFP46Y28LW3P5%23RK1QG47RCLGFX3HJLPJ88ZT59QSM08V3GU3ZQ2CXX0X90J6PF2MZRGHC+OH1QYPM59NK2LXXS4890SUAXXYT25Z2VAPHP0X7YEYCJXGWAG6UG9ZU6NQ+EX1WSND7EC"
+    const pjUriString = localStorage.getItem("pjUriString");
+    const psbtString = localStorage.getItem("psbtString");
+
     const bip21Uri = Uri.parse(pjUriString);
     console.log(bip21Uri.address());
     const pjUri = bip21Uri.check_pj_supported();
     console.log(pjUri.as_string);
 
-    const psbtString = "cHNidP8BAIkCAAAAAUwc8P8T60C5VVJVORMJReigNB/rG+z8CertBhQuu71HAAAAAAD9////AmcFAAAAAAAAIlEgahGjM6XWp4SNxf/zwBRWIivDG2laolxMX2RwybzSpbxAHwAAAAAAACJRICHuv6fLLHOLORT3c6d69nIaqjc7lZEGxM2kBj7dHm6mydQdAAABASsQJwAAAAAAACJRII8yGbPZhmj0XAC5xC3Vl/6oLoDL6PdENOr2iDPCRYBhIRZwialnzWYV9atLgOxXotS20us7zx/sT9gitIZhCBy9DRkAJeXTl1YAAIABAACAAAAAgAAAAAAAAAAAARcgcImpZ81mFfWrS4DsV6LUttLrO88f7E/YIrSGYQgcvQ0AAQUgGcPMB/naoZDvDtlzfhjNJFOV0t7uwEt61s7+Iq940VghBxnDzAf52qGQ7w7Zc34YzSRTldLe7sBLetbO/iKveNFYGQAl5dOXVgAAgAEAAIAAAACAAQAAAAAAAAAAAA=="
     const psbt = Psbt.from_string(psbtString);
-    console.log(psbt.to_json());
+    // console.log(psbt.to_json());
 
     const senderBuilder = SenderBuilder.from_psbt_and_uri(psbtString, pjUri);
     console.log(senderBuilder);
     const sender = senderBuilder.build_recommended(BigInt(4));
+    console.log(sender);
     const request = sender.extract_v2(ohttpRelay);
     console.log(request);
     console.log(request.url);
@@ -34,15 +50,20 @@ async function senderStep1() {
         headers: {
             'Content-Type': request.content_type
         },
-        body: request.body
+        body: request.body//psbtString
     });
-    const result = await response.text();
-    console.log('session started',result);
+    console.log('session', response);
+    if (response.ok) {
+        console.log('session start success');
+    } else {
+        return console.log('session failed', response);
+    }
+    const result = await response.bytes();
+    console.log(result);
 }
 
-senderStep1();
 
-async function testPj() {
+async function createAndSavePjUriAndPsbt() {
 
 
     // for full usage example to work off, see rust-payjoin/payjoin/tests/integration.rs#v2_to_v2
@@ -51,8 +72,14 @@ async function testPj() {
     // init sender wallet
     const {senderWallet, receiverWallet} = await initSenderAndReceiverWallets();
 
+    // const nextAddress = receiverWallet.reveal_next_address("external");
+    // console.log("next address", nextAddress.index, nextAddress.address.toString());
+    const addressInfo = receiverWallet.reveal_addresses_to("external", 2)[0]
+    console.log("address #", addressInfo.index);
+    const address = addressInfo.address.toString()
+
     const receiver = Receiver.new(
-        receiverWallet.reveal_next_address().address.toString(),
+        address,
         network,
         payjoinDirectory,
         ohttpKeys,
@@ -61,7 +88,8 @@ async function testPj() {
     console.log(receiver);
     console.log(receiver.to_json());
     // got the pj_uri for the sender to use:
-    console.log(receiver.pj_uri().as_string)
+    const pjUriString = receiver.pj_uri().as_string
+    console.log(pjUriString)
 
     // create psbt for pj_uri
     const psbt = senderWallet.build_tx()
@@ -75,9 +103,11 @@ async function testPj() {
     const psbt2 = Psbt.from_string(psbtString);
     console.log(psbt2.fee_amount().to_sat());
     console.log(psbt2.to_json());
-}
 
-// testPj();
+    // save to local storage
+    localStorage.setItem("psbtString", psbtString);
+    localStorage.setItem("pjUriString", pjUriString);
+}
 
 
 async function initSenderAndReceiverWallets() {
