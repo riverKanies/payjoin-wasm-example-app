@@ -40,7 +40,8 @@ async function senderStep1() {
     console.log(senderBuilder);
     const sender = senderBuilder.build_recommended(BigInt(4));
     console.log(sender);
-    const request = sender.extract_v2(ohttpRelay);
+    // getting context consumes the object, destructuring makes that seem natural
+    const {request, context} = sender.extract_v2(ohttpRelay);
     console.log(request);
     console.log(request.url);
     console.log(request.content_type);
@@ -60,6 +61,13 @@ async function senderStep1() {
     }
     const result = await response.bytes();
     console.log(result);
+
+    // consumes post context
+    const sendGetContext = context.process_response(result);
+    console.log(sendGetContext);
+    // throws error bc post context is consumed
+    // const sendGetContext2 = context.process_response(result);
+    // console.log(sendGetContext2);
 }
 
 
