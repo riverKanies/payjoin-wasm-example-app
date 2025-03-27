@@ -25,7 +25,12 @@ main();
 async function main() {
     const receiver = await createAndSavePjUriAndPsbt();
     const sendGetContext = await senderStep1();
+
     console.log("preparing for receiver to add inputTx", receiver, sendGetContext);
+
+    const {request, client_response} = await receiver.extract_req(ohttpRelay);
+    console.log("receiver extracted request", request);
+    console.log("receiver extracted client_response", client_response);
 }
 
 
