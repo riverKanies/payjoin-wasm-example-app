@@ -57,6 +57,13 @@ async function main() {
     console.log(proposal);
     const maybeInputsOwned = proposal.check_broadcast_suitability(null, true)
     console.log(maybeInputsOwned);
+    const maybeInputsSeen = maybeInputsOwned.check_inputs_not_owned((input) => {
+        console.log(input);
+        // need to actually confirm the sender input is not owned by receiver
+        return false;
+    })
+    console.log(maybeInputsSeen);
+
 }
 
 
