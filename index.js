@@ -31,6 +31,32 @@ async function main() {
     const {request, client_response} = await receiver.extract_req(ohttpRelay);
     console.log("receiver extracted request", request);
     console.log("receiver extracted client_response", client_response);
+
+    // get fallback psbt
+    console.log(request);
+    console.log(request.url);
+    console.log(request.content_type);
+    // console.log(request.body);
+    const response = await fetch(request.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': request.content_type
+        },
+        body: request.body//psbtString
+    });
+    console.log('fallback response', response);
+    if (response.ok) {
+        console.log('fallback success');
+    } else {
+        return console.log('fallback failed', response);
+    }
+    const result = await response.bytes();
+    console.log(result);
+
+    const proposal = await receiver.process_res(result, client_response);
+    console.log(proposal);
+    const maybeInputsOwned = proposal.check_broadcast_suitability(null, true)
+    console.log(maybeInputsOwned);
 }
 
 
