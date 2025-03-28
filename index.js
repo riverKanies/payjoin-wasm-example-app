@@ -1,7 +1,7 @@
 // Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
 
 import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount, Psbt } from 'bitcoindevkit';
-import { Uri, Receiver, SenderBuilder, Sender, Request } from 'payjoindevkit';
+import { Uri, Receiver, SenderBuilder, Sender, Request, InputPair } from 'payjoindevkit';
 
 
 const network = "signet";
@@ -23,7 +23,7 @@ const payjoinDirectory = "https://payjo.in";
 main();
 
 async function main() {
-    const receiver = await createAndSavePjUriAndPsbt();
+    const {receiver, receiverWallet, senderWallet} = await createAndSavePjUriAndPsbt();
     const sendGetContext = await senderStep1();
 
     console.log("preparing for receiver to add inputTx", receiver, sendGetContext);
@@ -64,6 +64,37 @@ async function main() {
     })
     console.log(maybeInputsSeen);
 
+    const outputsUnknown = maybeInputsSeen.check_no_inputs_seen_before((outpoint) => {
+        console.log(outpoint);
+        // need to actually confirm the output hasn't been seen before
+        return false;
+    })
+    console.log(outputsUnknown);
+
+    const wantsOutputs = outputsUnknown.identify_receiver_outputs((outputScript) => {
+        console.log(outputScript);
+        // need to actually confirm the output is owned by receiver
+        return true;
+    })
+    console.log(wantsOutputs);
+
+    const wantsInputs = wantsOutputs.commit_outputs()
+    console.log(wantsInputs);
+
+    const inputs = receiverWallet.list_unspent().map((utxo) => createInputPairWithTx(utxo))
+    console.log(inputs);
+
+    // const provisionalProposal = wantsInputs.contribute_inputs(inputs).commit_inputs()
+    // console.log(provisionalProposal);
+}
+
+function createInputPairWithTx(utxo) {
+    return InputPair.new(
+        utxo.outpoint.txid.toString(), // Txid to string
+        utxo.outpoint.vout, // number
+        BigInt(utxo.txout.value.to_sat()), // Amount to satoshis (bigint)
+        utxo.txout.script_pubkey.toString() // ScriptBuf to string
+    )
 }
 
 
@@ -100,7 +131,7 @@ async function senderStep1() {
     if (response.ok) {
         console.log('session start success');
     } else {
-        return console.log('session failed', response);
+        throw('session failed', response);
     }
     const result = await response.bytes();
     console.log(result);
@@ -127,7 +158,7 @@ async function createAndSavePjUriAndPsbt() {
 
     // const nextAddress = receiverWallet.reveal_next_address("external");
     // console.log("next address", nextAddress.index, nextAddress.address.toString());
-    const addressInfo = receiverWallet.reveal_addresses_to("external", 2)[0]
+    const addressInfo = receiverWallet.reveal_addresses_to("external", 3)[0]
     console.log("address #", addressInfo.index);
     const address = addressInfo.address.toString()
 
@@ -158,7 +189,7 @@ async function createAndSavePjUriAndPsbt() {
     localStorage.setItem("psbtString", psbtString);
     localStorage.setItem("pjUriString", pjUriString);
 
-    return receiver
+    return {receiver, receiverWallet, senderWallet}
 }
 
 
