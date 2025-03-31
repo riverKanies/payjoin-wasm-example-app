@@ -13,7 +13,7 @@ const ohttpRelay = "https://pj.bobspacebkk.com";
 
 
 // Note: ohttpkeys are the same for all three relays, guess they're specific to the endpoint only
-const ohttpKeys = "OH1QYPJ8S50XG3XK8URWDQ5VKTD6SLSGGH0S6UQ63R93G9VKANS3EX4CZC"
+const ohttpKeys = "OH1QYPQ8A3HN7P8CYTL637T62CWVTYMYTAEG6504Q9MPXZH7047CHPCD5C"
 // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
 
 const payjoinDirectory = "https://payjo.in";
@@ -93,7 +93,7 @@ function createInputPairWithTx(utxo) {
         utxo.outpoint.txid.toString(), // Txid to string
         utxo.outpoint.vout, // number
         BigInt(utxo.txout.value.to_sat()), // Amount to satoshis (bigint)
-        utxo.txout.script_pubkey.toString() // ScriptBuf to string
+        utxo.txout.script_pubkey.as_bytes() // ScriptBuf as bytes
     )
 }
 
