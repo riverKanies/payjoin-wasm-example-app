@@ -96,6 +96,23 @@ async function main() {
         BigInt(1),
         BigInt(2)
     )
+
+    let { request: finalRequest, client_response: finalContext } = payjoinProposal.extract_v2_req(ohttpRelay);
+    let responsePayjoin = await fetch(finalRequest.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': finalRequest.content_type
+        },
+        body: finalRequest.body
+    });
+    console.log('finalized', responsePayjoin);
+    if (responsePayjoin.ok) {
+        console.log('final proposal submitted success');
+    } else {
+        throw('finalized submition failed', responsePayjoin);
+    }
+    const responseData = await responsePayjoin.bytes();
+    await payjoinProposal.process_res(responseData, finalContext);// what does this do?
 }
 
 function createInputPairWithTx(utxo) {
