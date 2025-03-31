@@ -84,8 +84,18 @@ async function main() {
     const inputs = receiverWallet.list_unspent().map((utxo) => createInputPairWithTx(utxo))
     console.log(inputs);
 
-    // const provisionalProposal = wantsInputs.contribute_inputs(inputs).commit_inputs()
-    // console.log(provisionalProposal);
+    const provisionalProposal = wantsInputs.contribute_inputs(inputs).commit_inputs()
+    console.log(provisionalProposal);
+
+    const payjoinProposal = provisionalProposal.finalize_proposal(
+        (psbt) => {
+            console.log('finalizing', psbt);
+            // final check
+            return psbt
+        },
+        BigInt(1),
+        BigInt(2)
+    )
 }
 
 function createInputPairWithTx(utxo) {
