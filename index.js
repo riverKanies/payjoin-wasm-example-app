@@ -1,6 +1,6 @@
 // Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
 
-import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount, Psbt } from 'bitcoindevkit';
+import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount, Psbt, SignOptions } from 'bitcoindevkit';
 import { Uri, Receiver, SenderBuilder, Sender, Request, InputPair } from 'payjoindevkit';
 
 
@@ -13,7 +13,7 @@ const ohttpRelay = "https://pj.bobspacebkk.com";
 
 
 // Note: ohttpkeys are the same for all three relays, guess they're specific to the endpoint only
-const ohttpKeys = "OH1QYPQ8A3HN7P8CYTL637T62CWVTYMYTAEG6504Q9MPXZH7047CHPCD5C"
+const ohttpKeys = "OH1QYP87E2AVMDKXDTU6R25WCPQ5ZUF02XHNPA65JMD8ZA2W4YRQN6UUWG"
 // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
 
 const payjoinDirectory = "https://payjo.in";
@@ -89,9 +89,22 @@ async function main() {
 
     const payjoinProposal = provisionalProposal.finalize_proposal(
         (psbt) => {
-            console.log('finalizing', psbt);
+            console.log('signing receiver inputs', psbt);
             // final check
-            return psbt
+            const psbtObj = Psbt.from_string(psbt)
+            console.log(psbtObj);
+            console.log(psbtObj.to_json());
+            console.log(receiverWallet)
+            try {
+                const options = new SignOptions()
+                console.log(options)
+                options.trust_witness_utxo = true
+                receiverWallet.sign_with_options(psbtObj, options);
+            } catch (e) {
+                console.error('sign err', e);
+            }
+            console.log('signed', psbtObj);
+            return psbtObj.toString()
         },
         BigInt(1),
         BigInt(2)
@@ -113,6 +126,8 @@ async function main() {
     }
     const responseData = await responsePayjoin.bytes();
     await payjoinProposal.process_res(responseData, finalContext);// what does this do?
+
+    senderStep2(senderWallet, sendGetContext);
 }
 
 function createInputPairWithTx(utxo) {
@@ -124,6 +139,43 @@ function createInputPairWithTx(utxo) {
     )
 }
 
+async function senderStep2(senderWallet, sendGetContext) {
+    // SENDER STEP 2
+    console.log('sender step 2', sendGetContext);
+    const res = await sendGetContext.extract_req(ohttpRelay);
+    console.log(res);
+    const {request, ohttp_ctx} = res
+    console.log(request, request.url, request.content_type, request.body);
+    console.log(ohttp_ctx);
+    const response = await fetch(request.url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': request.content_type
+        },
+        body: request.body
+    })
+    console.log('sender step 2', response);
+    const result = await response.bytes();
+    const checkedPayjoinProposalPsbt = sendGetContext.process_response(result, ohttp_ctx);
+    console.log(checkedPayjoinProposalPsbt);
+
+    // Convert PSBT string to PSBT object
+    let payjoinPsbt = Psbt.from_string(checkedPayjoinProposalPsbt);
+
+    // Sign the PSBT with the wallet
+    senderWallet.sign(payjoinPsbt);
+
+    // Extract the final transaction
+    let finalTx = payjoinPsbt.extract_tx();
+    console.log("ready to broadcast", finalTx);
+
+    const client = new EsploraClient("https://mutinynet.com/api");
+    // const broadcasted = await client.broadcast(finalTx)
+    // console.log("broadcasted", broadcasted);
+
+    // a completed payjoin tx using this demo app:
+    // https://mutinynet.com/tx/f90380bdb2284a7586a386017177257d2454aab100f2a21d5ed2a6e3baf48f6e
+}
 
 async function senderStep1() {
     const pjUriString = localStorage.getItem("pjUriString");
@@ -147,6 +199,7 @@ async function senderStep1() {
     console.log(request.url);
     console.log(request.content_type);
     // console.log(request.body);
+    
     const response = await fetch(request.url, {
         method: 'POST',
         headers: {
@@ -158,6 +211,7 @@ async function senderStep1() {
     if (response.ok) {
         console.log('session start success');
     } else {
+        console.log('session failed, check ohttp keys');
         throw('session failed', response);
     }
     const result = await response.bytes();
@@ -240,6 +294,7 @@ async function initSenderAndReceiverWallets() {
     receiverWallet.apply_update(receiver_update);
     console.log("Balance:", receiverWallet.balance.confirmed.to_sat());
     // console.log("New address:", receiverWallet.reveal_next_address().address);
+    console.log("Transaction ID:", receiverWallet.list_unspent()[0].outpoint.txid.toString());
 
     console.log("Sender syncing...");
     let sender_scan_request = senderWallet.start_full_scan();
