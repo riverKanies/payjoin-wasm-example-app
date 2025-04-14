@@ -99,7 +99,7 @@ async function main() {
                 const options = new SignOptions()
                 console.log(options)
                 options.trust_witness_utxo = true
-                receiverWallet.sign_with_options(psbtObj, options);
+                receiverWallet.sign(psbtObj, options);
             } catch (e) {
                 console.error('sign err', e);
             }
@@ -163,7 +163,7 @@ async function senderStep2(senderWallet, sendGetContext) {
     let payjoinPsbt = Psbt.from_string(checkedPayjoinProposalPsbt);
 
     // Sign the PSBT with the wallet
-    senderWallet.sign(payjoinPsbt);
+    senderWallet.sign(payjoinPsbt, new SignOptions());
 
     // Extract the final transaction
     let finalTx = payjoinPsbt.extract_tx();
@@ -237,9 +237,10 @@ async function createAndSavePjUriAndPsbt() {
     // init sender wallet
     const {senderWallet, receiverWallet} = await initSenderAndReceiverWallets();
 
-    // const nextAddress = receiverWallet.reveal_next_address("external");
+    const addressInfo = receiverWallet.reveal_next_address("external");
     // console.log("next address", nextAddress.index, nextAddress.address.toString());
-    const addressInfo = receiverWallet.reveal_addresses_to("external", 3)[0]
+    // console.log(receiverWallet.reveal_addresses_to("external", 0))
+    // const addressInfo = receiverWallet.reveal_addresses_to("external", 3)[0]
     console.log("address #", addressInfo.index);
     const address = addressInfo.address.toString()
 
