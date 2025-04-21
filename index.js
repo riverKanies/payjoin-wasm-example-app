@@ -1,7 +1,7 @@
 // Note: do not use JS new keyword on wasm classes, even if the class exposes a constructor called 'new', you access it with ObjName.new()
 
 import {  Wallet, EsploraClient, ChangeSet, FeeRate, Recipient, Address, Amount, Psbt, SignOptions } from 'bitcoindevkit';
-import { Uri, Receiver, SenderBuilder, Sender, Request, InputPair } from 'payjoindevkit';
+import { Uri, Receiver, SenderBuilder, Sender, Request, InputPair, OhttpKeys } from 'payjoindevkit';
 
 
 const network = "signet";
@@ -13,7 +13,7 @@ const ohttpRelay = "https://pj.bobspacebkk.com";
 
 
 // Note: ohttpkeys are the same for all three relays, guess they're specific to the endpoint only
-const ohttpKeys = "OH1QYP87E2AVMDKXDTU6R25WCPQ5ZUF02XHNPA65JMD8ZA2W4YRQN6UUWG"
+// const ohttpKeys = "OH1QYP87E2AVMDKXDTU6R25WCPQ5ZUF02XHNPA65JMD8ZA2W4YRQN6UUWG"
 // if these don't work you can get the new keys for the default gateway using payjoin-cli fetch-keys https://github.com/payjoin/rust-payjoin/pull/589
 
 const payjoinDirectory = "https://payjo.in";
@@ -244,12 +244,15 @@ async function createAndSavePjUriAndPsbt() {
     console.log("address #", addressInfo.index);
     const address = addressInfo.address.toString()
 
+    const ohttpKeysResponse = await fetch(`${payjoinDirectory}/.well-known/ohttp-gateway`)
+    const ohttpKeysBuffer = new Uint8Array(await ohttpKeysResponse.arrayBuffer())
+    const ohttpKeys = new OhttpKeys(ohttpKeysBuffer)
+
     const receiver = Receiver.new(
         address,
         network,
         payjoinDirectory,
-        ohttpKeys,
-        ohttpRelay
+        ohttpKeys
     );
     console.log(receiver);
     // console.log(receiver.to_json());
